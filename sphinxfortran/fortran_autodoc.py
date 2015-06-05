@@ -291,11 +291,16 @@ class F90toRst(object):
 
                 # Scan module variables
                 self.strip_blocksrc(block, ['type', 'function', 'subroutine'], src=modsrc)
-                for line in modsrc:
-                    if line.strip().startswith('!'): continue
-                    m = block['vardescsearch'](line)
-                    if m:
-                        block['vars'][m.group('varname')]['desc'] = m.group('vardesc')
+                if modsrc is not None:
+                    for line in modsrc:
+                        if line.strip().startswith('!'): continue
+                        try:
+                            m = block['vardescsearch'](line)
+                            if m:
+                                block['vars'][m.group('varname')]['desc'] = m.group('vardesc')
+                        except:
+                            # TODO raise the right exception
+                            pass
                 for bvar in block['vars'].values():
                     bvar.setdefault('desc', '')
 
@@ -368,9 +373,13 @@ class F90toRst(object):
         if block['block'] in ['function', 'subroutine'] and subsrc is not None:
             for line in subsrc:
                 if line.strip().startswith('!'): continue
-                m = block['vardescsearch'](line)
-                if m:
-                    block['vars'][m.group('varname')]['desc'] = m.group('vardesc')
+                try:
+                    m = block['vardescsearch'](line)
+                    if m:
+                        block['vars'][m.group('varname')]['desc'] = m.group('vardesc')
+                except:
+                    # TODO raise the right exception
+                    pass
 
         # Fill empty descriptions
         for bvar in block['vars'].values():
@@ -481,8 +490,10 @@ class F90toRst(object):
             if subblock['block'] in exc:
                 subsrc = self.get_blocksrc(subblock, src=src, getidx=True)
                 if subsrc is None: continue # Already stripped
-                del src[subsrc[1][0]:subsrc[1][1]]
-                del subsrc
+                if src is not None:
+                    del src[subsrc[1][0]:subsrc[1][1]]
+                if subsrc is not None:
+                    del subsrc
 
 
     def get_comment(self, src, iline=1, aslist=False, stripped=False, getilast=False, rightafter=True):
@@ -999,11 +1010,15 @@ class F90toRst(object):
         if blocktype!='program' :
             found = []
             for iline in xrange(len(comments)):
-                m = block['vardescmatch'](comments[iline])
-                if m:
-                    varname = m.group('varname')
-                    found.append(varname)
-                    comments[iline] = self.format_argfield(block['vars'][varname], block=block)
+                try:
+                    m = block['vardescmatch'](comments[iline])
+                    if m:
+                        varname = m.group('varname')
+                        found.append(varname)
+                        comments[iline] = self.format_argfield(block['vars'][varname], block=block)
+                except:
+                    # TODO raise the right exception
+                    pass
             for varname in block['args']+block['sortvars']:
                 if varname not in found:
                     comments.append(self.format_argfield(block['vars'][varname], block=block))
@@ -1020,20 +1035,24 @@ class F90toRst(object):
         module  = block.get('module')
         # - call froms
         if blocktype in ['function', 'subroutine']:
-            if block['callfrom']:
-                callfrom = []
+            try:
+                if block['callfrom']:
+                    callfrom = []
 
-                for fromname in block['callfrom']:
-                    if fromname in self.routines:
-                        cf = self.format_funcref(fromname, module)
-                    else:
-                        cf = ':f:prog:`%s`'%fromname
-                    callfrom.append(cf)
+                    for fromname in block['callfrom']:
+                        if fromname in self.routines:
+                            cf = self.format_funcref(fromname, module)
+                        else:
+                            cf = ':f:prog:`%s`'%fromname
+                        callfrom.append(cf)
 
-                #callfrom += ', '.join([self.format_funcref(getattr(self, routines[fn]['name'], module) for fn in block['callfrom']])
-                callfrom = ':from: ' + ', '.join(callfrom)
+                    #callfrom += ', '.join([self.format_funcref(getattr(self, routines[fn]['name'], module) for fn in block['callfrom']])
+                    callfrom = ':from: ' + ', '.join(callfrom)
 
-                calls.append(callfrom)
+                    calls.append(callfrom)
+            except:
+                # TODO raise the right exception
+                pass
         # - call tos
         if block['callto']:
             callto = ', '.join([self.format_funcref(fn, module) for fn in block['callto']])
@@ -1070,9 +1089,13 @@ class F90toRst(object):
 
         # Functions and subroutines
         flist = self.get_blocklist('functions', module)
-        flist.sort()
-        if flist:
-            decs.append(':Routines: '+', '.join([':f:func:`~%s/%s`'%(module, ff['name']) for ff in flist]))
+        try:
+            flist.sort()
+            if flist:
+                decs.append(':Routines: '+', '.join([':f:func:`~%s/%s`'%(module, ff['name']) for ff in flist]))
+        except:
+            # TODO raise the right exception
+            pass
 
         if decs: return self.format_lines(title+'\n'.join(decs))+'\n\n'
         return ''
